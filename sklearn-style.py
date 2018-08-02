@@ -10,10 +10,11 @@ from sklearn.linear_model import RidgeClassifier, LogisticRegression
 from sklearn.model_selection import GridSearchCV
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
+import warnings
 
 import data
 
-
+warnings.filterwarnings('ignore')
 def isNaN(num):
     return num != num
 
@@ -95,7 +96,8 @@ sb.heatmap(filtered_train_data.corr(), linewidths=0.1, vmax=1, square=True, line
 plt.show()
 
 # See plot between the variables
-sb.pairplot(filtered_train_data, hue='Survived')
+g = sb.pairplot(filtered_train_data, hue='Survived')
+g.set(xticklabels=[])
 plt.show()
 
 # Some useful parameters
@@ -113,7 +115,7 @@ def get_out_of_fold_prediction(clf, x_train, y_train, x_test):
     for i, (train_index, test_index) in enumerate(kf):
         x_tr = x_train[train_index]
         y_tr = y_train[train_index]
-        x_te = x_test[test_index]
+        x_te = x_train[test_index]
 
         clf.fit(x_tr, y_tr)
 
@@ -139,11 +141,12 @@ rf = RandomForestClassifier(**rf_params)
 
 rf_oof_train, rf_oof_test = get_out_of_fold_prediction(rf, x_train, y_train, x_test)
 
+
+
 print('Training Complete!')
 rf_feature = rf.feature_importances_
-
 feature_dataframe = pd.DataFrame({
-    'features': filtered_train_data.columns.values,
+    'features': filtered_train_data.columns[1:].values,
     'Random Forest Important Features': rf_feature
 })
 
