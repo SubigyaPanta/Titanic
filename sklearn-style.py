@@ -5,12 +5,14 @@ from matplotlib import pyplot as plt
 from matplotlib import pylab as plb
 import seaborn as sb
 from sklearn.cross_validation import KFold
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
 from sklearn.linear_model import RidgeClassifier, LogisticRegression
 from sklearn.model_selection import GridSearchCV
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 import warnings
+
+from sklearn.tree import ExtraTreeClassifier
 
 import data
 
@@ -141,16 +143,55 @@ rf = RandomForestClassifier(**rf_params)
 
 rf_oof_train, rf_oof_test = get_out_of_fold_prediction(rf, x_train, y_train, x_test)
 
+# Extra trees
+et = ExtraTreeClassifier(max_depth=8, min_samples_leaf=2)
+et_oof_train, et_oof_test = get_out_of_fold_prediction(et, x_train, y_train, x_test)
 
+# Ada boost
+ada = AdaBoostClassifier(n_estimators=500, learning_rate=0.75)
+ada_oof_train, ada_oof_test = get_out_of_fold_prediction(ada, x_train, y_train, x_test)
+
+# Gradient boosting
+grd = GradientBoostingClassifier(n_estimators=500, max_depth=5, min_samples_leaf=2, verbose=0)
+grd_oof_train, grd_oof_test = get_out_of_fold_prediction(grd, x_train, y_train, x_test)
+
+# Support Vectors
+svc = SVC(kernel='linear', C=0.025)
+svc_oof_train, svc_oof_test = get_out_of_fold_prediction(svc, x_train, y_train, x_test)
 
 print('Training Complete!')
 rf_feature = rf.feature_importances_
 feature_dataframe = pd.DataFrame({
     'features': filtered_train_data.columns[1:].values,
-    'Random Forest Important Features': rf_feature
+    'Random Forest': rf_feature,
+    'Extra Trees': et.feature_importances_,
+    'AdaBoost': ada.feature_importances_,
+    'GradientBoost': grd.feature_importances_
 })
-
+print('features', filtered_train_data.columns[1:].values)
 print(feature_dataframe.head())
+
+feature_dataframe.plot(x='features', y='Random Forest', kind='bar', title='Random Forest', legend=False)
+plt.show()
+
+feature_dataframe.plot(x='features', y='Extra Trees', kind='bar', title='Extra Trees', legend=False)
+plt.show()
+
+feature_dataframe.plot(x='features', y='AdaBoost', kind='bar', title='AdaBoost', legend=False)
+plt.show()
+
+feature_dataframe.plot(x='features', y='GradientBoost', kind='bar', title='GradientBoost', legend=False)
+plt.show()
+
+# Creating new column containing the average of values
+feature_dataframe['mean'] = feature_dataframe.mean(axis=1) # row-wise mean
+print(feature_dataframe.head())
+
+# Plot mean
+feature_dataframe.plot(x='features', y='mean', kind='bar', title='Mean', legend=False)
+plt.show()
+
+
 
 
 # Train
