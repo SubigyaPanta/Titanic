@@ -1,12 +1,15 @@
 import pandas as pd
 import numpy as np
 from math import isnan
+
+import xgboost
 from matplotlib import pyplot as plt
 from matplotlib import pylab as plb
 import seaborn as sb
 from sklearn.cross_validation import KFold
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
 from sklearn.linear_model import RidgeClassifier, LogisticRegression
+from sklearn.metrics import accuracy_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
@@ -191,7 +194,42 @@ print(feature_dataframe.head())
 feature_dataframe.plot(x='features', y='mean', kind='bar', title='Mean', legend=False)
 plt.show()
 
+# Second Level Predictions from First Level Output
+base_prediction_train = pd.DataFrame({
+    'RandomForest': rf_oof_train.ravel(),
+    'ExtraTrees': et_oof_train.ravel(),
+    'AdaBoost': ada_oof_train.ravel(),
+    'GradientBoost': grd_oof_train.ravel()
+})
+print(base_prediction_train.head())
 
+# Lets see correlation between columns for second layer prediction
+plt.title("Pearson's Correlation For Second Layer", y=1.05, size=15)
+sb.heatmap(base_prediction_train.corr(), linewidths=0.1, vmax=1, square=True, linecolor='white', annot=True)
+plt.show()
+
+# Combine training data
+x_train_final = np.concatenate((et_oof_train, rf_oof_train, ada_oof_train,
+                                grd_oof_train, svc_oof_train), axis=1)
+print(x_train_final)
+x_test_final = np.concatenate((et_oof_test, rf_oof_test, ada_oof_test,
+                               grd_oof_test, svc_oof_test), axis=1)
+
+# Finally call XGBClassifier... but Why ?
+gbm = xgboost.XGBClassifier(n_estimators=2000, max_depth=4, min_child_weight=2,
+                            gamma=0.9, subsample=0.8, colsample_bytree=0.8,
+                            objective='binary:logistic', nthread=-1, scale_pos_weight=1)
+gbm.fit(x_train_final, y_train)
+predictions = gbm.predict(x_test_final) # Test Predictions
+train_prediction = gbm.predict(x_train_final)
+print('train accuracy: ', accuracy_score(y_train, train_prediction))
+
+# Generate Submission File
+submission = pd.DataFrame({
+    'PassengerId': raw_test_data['PassengerId'].ravel(),
+    'Survived': predictions
+}, dtype=int)
+submission.to_csv(path_or_buf='submissions/EnsembleSubmission.csv', index=False)
 
 
 # Train
